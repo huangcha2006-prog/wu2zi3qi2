@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>自适应学习五子棋AI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #3a7bd5 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            display: flex;
+            gap: 30px;
+            max-width: 1400px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        /* 左侧游戏区域 */
+        .game-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .game-title {
+            font-size: 32px;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: 700;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .board-container {
+            position: relative;
+            background: linear-gradient(145deg, #deb887, #cd853f);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+        }
+
+        #board {
+            display: grid;
+            grid-template-columns: repeat(15, 40px);
+            grid-template-rows: repeat(15, 40px);
+            gap: 0;
+            background: #deb887;
+            border: 3px solid #8b4513;
+            position: relative;
+        }
+
+        .cell {
+            width: 40px;
+            height: 40px;
+            border: 1px solid #8b4513;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            position: relative;
+            background: transparent;
+        }
+
+        .cell:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .piece {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            position: absolute;
+            z-index: 10;
+            box-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+            animation: placePiece 0.3s ease;
+        }
+
+        @keyframes placePiece {
+            0% { transform: scale(0); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        .black {
+            background: radial-gradient(circle at 30% 30%, #555, #000);
+        }
+
+        .white {
+            background: radial-gradient(circle at 30% 30%, #fff, #ddd);
+            border: 1px solid #ccc;
+        }
+
+        .status-panel {
+            margin-top: 20px;
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            min-width: 300px;
+            text-align: center;
+        }
+
+        /* 右侧控制面板 */
+        .control-panel {
+            width: 350px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .panel-title {
+            font-size: 24px;
+            color: #2c3e50;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        button {
+            padding: 15px 20px;
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+
+        .btn-learning {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-learning.active {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        .stats-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border-left: 5px solid #667eea;
+        }
+
+        .stats-card h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .stat-item:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+
+        .stat-value {
+            font-weight: 700;
+            color: #2c3e50;
+            font-size: 16px;
+        }
+
+        .learning-status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-active {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-inactive {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #ecf0f1;
+            border-radius: 4px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.5s ease;
+            border-radius: 4px;
+        }
+
+        .last-move {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #666;
+            font-style: italic;
+        }
+
+        .thinking-indicator {
+            display: none;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+            padding: 10px;
+            background: #fff3cd;
+            border-radius: 8px;
+            color: #856404;
+        }
+
+        .thinking-indicator.active {
+            display: flex;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            background: #856404;
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+
+        .dot:nth-child(1) { animation-delay: -0.32s; }
+        .dot:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+
+        @media (max-width: 968px) {
+            .container {
+                flex-direction: column;
+            }
+            .control-panel {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 左侧游戏区域 -->
+        <div class="game-section">
+            <h1 class="game-title">自适应学习五子棋AI</h1>
+            <div class="board-container">
+                <div id="board"></div>
+            </div>
+            <div class="status-panel" id="status">黑棋回合 (你的回合)</div>
+            <div class="thinking-indicator" id="thinking">
+                <div class="dot"></div>
+                <div class="dot"></div>
+                <div class="dot"></div>
+                <span>AI正在思考并学习...</span>
+            </div>
+            <div class="last-move" id="lastMove"></div>
+        </div>
+
+        <!-- 右侧控制面板 -->
+        <div class="control-panel">
+            <div class="panel-title">控制面板</div>
+            
+            <div class="button-group">
+                <button class="btn-primary" onclick="game.newGame()">新游戏</button>
+                <button class="btn-learning" id="learnBtn" onclick="game.toggleLearning()">启用学习模式</button>
+                <button class="btn-success" onclick="game.trainAI()">训练AI</button>
+                <button class="btn-danger" onclick="game.resetKnowledge()">重置AI知识</button>
+            </div>
+
+            <div class="stats-card">
+                <h3>📊 对战统计</h3>
+                <div class="stat-item">
+                    <span class="stat-label">总对局数</span>
+                    <span class="stat-value" id="totalGames">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">玩家胜利</span>
+                    <span class="stat-value" id="playerWins">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">AI胜利</span>
+                    <span class="stat-value" id="aiWins">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">AI胜率</span>
+                    <span class="stat-value" id="winRate">0%</span>
+                </div>
+            </div>
+
+            <div class="stats-card">
+                <h3>🤖 AI学习状态</h3>
+                <div class="stat-item">
+                    <span class="stat-label">学习模式</span>
+                    <span class="learning-status status-inactive" id="learnStatus">已禁用</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">学习进度</span>
+                    <span class="stat-value" id="learnProgress">0%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressBar" style="width: 0%"></div>
+                </div>
+                <div class="stat-item" style="margin-top: 10px;">
+                    <span class="stat-label">已学习局面</span>
+                    <span class="stat-value" id="learnedPatterns">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">策略深度</span>
+                    <span class="stat-value" id="strategyDepth">初级</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class AdaptiveGomokuAI {
+            constructor() {
+                this.size = 15;
+                this.board = [];
+                this.currentPlayer = 'black';
+                this.gameOver = false;
+                this.learningMode = false;
+                this.knowledge = this.loadKnowledge();
+                this.moveHistory = [];
+                this.trainingCount = 0;
+                this.stats = this.loadStats();
+                this.threatScores = new Map();
+                this.initializeBoard();
+                this.updateStats();
+            }
+
+            initializeBoard() {
+                const boardEl = document.getElementById('board');
+                boardEl.innerHTML = '';
+                this.board = Array(this.size).fill(null).map(() => Array(this.size).fill(null));
+                
+                for (let i = 0; i < this.size; i++) {
+                    for (let j = 0; j < this.size; j++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'cell';
+                        cell.dataset.row = i;
+                        cell.dataset.col = j;
+                        cell.addEventListener('click', () => this.handleMove(i, j));
+                        boardEl.appendChild(cell);
+                    }
+                }
+            }
+
+            loadKnowledge() {
+                const saved = localStorage.getItem('gomokuAIKnowledge');
+                return saved ? JSON.parse(saved) : {
+                    patterns: {},
+                    weights: Array(this.size).fill(null).map(() => Array(this.size).fill(1)),
+                    experiences: []
+                };
+            }
+
+            saveKnowledge() {
+                localStorage.setItem('gomokuAIKnowledge', JSON.stringify(this.knowledge));
+            }
+
+            loadStats() {
+                const saved = localStorage.getItem('gomokuStats');
+                return saved ? JSON.parse(saved) : {
+                    totalGames: 0,
+                    playerWins: 0,
+                    aiWins: 0,
+                    winRate: 0
+                };
+            }
+
+            saveStats() {
+                localStorage.setItem('gomokuStats', JSON.stringify(this.stats));
+            }
+
+            handleMove(row, col) {
+                if (this.gameOver || this.board[row][col]) return;
+
+                this.placePiece(row, col, this.currentPlayer);
+                this.moveHistory.push({row, col, player: this.currentPlayer});
+
+                if (this.checkWin(row, col)) {
+                    this.handleGameEnd(this.currentPlayer);
+                    return;
+                }
+
+                if (this.isDraw()) {
+                    this.handleGameEnd('draw');
+                    return;
+                }
+
+                this.currentPlayer = this.currentPlayer === 'black' ? 'white' : 'black';
+                this.updateStatus();
+
+                if (this.currentPlayer === 'white') {
+                    setTimeout(() => this.aiMove(), 500);
+                }
+            }
+
+            placePiece(row, col, player) {
+                this.board[row][col] = player;
+                const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+                const piece = document.createElement('div');
+                piece.className = `piece ${player}`;
+                cell.appendChild(piece);
+            }
+
+            aiMove() {
+                document.getElementById('thinking').classList.add('active');
+                
+                setTimeout(() => {
+                    let move;
+                    
+                    if (this.learningMode && Math.random() < 0.7 && this.knowledge.experiences.length > 10) {
+                        move = this.getLearntMove();
+                    } else {
+                        move = this.findBestMove();
+                    }
+
+                    if (move) {
+                        this.placePiece(move.row, move.col, 'white');
+                        this.moveHistory.push({row: move.row, col: move.col, player: 'white'});
+                        document.getElementById('lastMove').textContent = `AI最后落子: 第${move.row + 1}行, 第${move.col + 1}列`;
+
+                        if (this.checkWin(move.row, move.col)) {
+                            this.handleGameEnd('white');
+                            document.getElementById('thinking').classList.remove('active');
+                            return;
+                        }
+
+                        if (this.isDraw()) {
+                            this.handleGameEnd('draw');
+                            document.getElementById('thinking').classList.remove('active');
+                            return;
+                        }
+
+                        this.currentPlayer = 'black';
+                        this.updateStatus();
+                        
+                        if (this.learningMode) {
+                            this.learnFromMove(move);
+                        }
+                    }
+
+                    document.getElementById('thinking').classList.remove('active');
+                }, 300);
+            }
+
+            findBestMove() {
+                // 1. 检查是否可以获胜
+                const winMove = this.findWinningMove('white');
+                if (winMove) return winMove;
+
+                // 2. 阻止玩家获胜
+                const blockMove = this.findWinningMove('black');
+                if (blockMove) return blockMove;
+
+                // 3. 评估所有可能位置
+                let bestMove = null;
+                let bestScore = -Infinity;
+
+                for (let i = 0; i < this.size; i++) {
+                    for (let j = 0; j < this.size; j++) {
+                        if (!this.board[i][j]) {
+                            const score = this.evaluatePosition(i, j) * this.knowledge.weights[i][j];
+                            if (score > bestScore) {
+                                bestScore = score;
+                                bestMove = {row: i, col: j};
+                            }
+                        }
+                    }
+                }
+
+                return bestMove || this.getRandomMove();
+            }
+
+            evaluatePosition(row, col) {
+                let score = 0;
+                const directions = [[0,1], [1,0], [1,1], [1,-1]];
+                
+                directions.forEach(([dx, dy]) => {
+                    score += this.evaluateDirection(row, col, dx, dy, 'white') * 1.2;
+                    score += this.evaluateDirection(row, col, dx, dy, 'black') * 1.0;
+                });
+
+                // 位置偏好：中心位置得分更高
+                const centerDist = Math.abs(row - 7) + Math.abs(col - 7);
+                score += (14 - centerDist) * 2;
+
+                return score;
+            }
+
+            evaluateDirection(row, col, dx, dy, player) {
+                let count = 0;
+                let blocked = 0;
+                
+                for (let i = 1; i <= 4; i++) {
+                    const newRow = row + dx * i;
+                    const newCol = col + dy * i;
+                    if (this.isValid(newRow, newCol)) {
+                        if (this.board[newRow][newCol] === player) count++;
+                        else if (this.board[newRow][newCol]) blocked++;
+                        else break;
+                    } else {
+                        blocked++;
+                        break;
+                    }
+                }
+
+                for (let i = 1; i <= 4; i++) {
+                    const newRow = row - dx * i;
+                    const newCol = row - dy * i;
+                    if (this.isValid(newRow, newCol)) {
+                        if (this.board[newRow][newCol] === player) count++;
+                        else if (this.board[newRow][newCol]) blocked++;
+                        else break;
+                    } else {
+                        blocked++;
+                        break;
+                    }
+                }
+
+                if (blocked === 2) return 0;
+                if (count >= 4) return 100000;
+                if (count === 3) return blocked === 0 ? 10000 : 1000;
+                if (count === 2) return blocked === 0 ? 100 : 10;
+                if (count === 1) return 5;
+                return 1;
+            }
+
+            findWinningMove(player) {
+                for (let i = 0; i < this.size; i++) {
+                    for (let j = 0; j < this.size; j++) {
+                        if (!this.board[i][j]) {
+                            this.board[i][j] = player;
+                            const win = this.checkWin(i, j);
+                            this.board[i][j] = null;
+                            if (win) return {row: i, col: j};
+                        }
+                    }
+                }
+                return null;
+            }
+
+            getRandomMove() {
+                const available = [];
+                for (let i = 0; i < this.size; i++) {
+                    for (let j = 0; j < this.size; j++) {
+                        if (!this.board[i][j]) available.push({row: i, col: j});
+                    }
+                }
+                return available[Math.floor(Math.random() * available.length)];
+            }
+
+            getLearntMove() {
+                // 从历史经验中学习最佳走法
+                const pattern = this.getBoardPattern();
+                if (this.knowledge.patterns[pattern]) {
+                    const moves = this.knowledge.patterns[pattern];
+                    const bestMove = moves.reduce((a, b) => a.score > b.score ? a : b);
+                    if (bestMove.score > 0) {
+                        return {row: bestMove.row, col: bestMove.col};
+                    }
+                }
+                return this.findBestMove();
+            }
+
+            getBoardPattern() {
+                // 简化表示当前棋局状态
+                return this.moveHistory.slice(-4).map(m => `${m.row},${m.col},${m.player}`).join('|');
+            }
+
+            learnFromMove(move) {
+                // 强化学习：根据后续结果调整权重
+                const pattern = this.getBoardPattern();
+                if (!this.knowledge.patterns[pattern]) {
+                    this.knowledge.patterns[pattern] = [];
+                }
+
+                const existing = this.knowledge.patterns[pattern].find(m => 
+                    m.row === move.row && m.col === move.col
+                );
+
+                if (existing) {
+                    existing.visits = (existing.visits || 1) + 1;
+                } else {
+                    this.knowledge.patterns[pattern].push({
+                        row: move.row,
+                        col: move.col,
+                        score: 50,
+                        visits: 1
+                    });
+                }
+
+                // 增加位置权重
+                this.knowledge.weights[move.row][move.col] *= 1.05;
+                
+                // 限制权重范围
+                for (let i = 0; i < this.size; i++) {
+                    for (let j = 0; j < this.size; j++) {
+                        this.knowledge.weights[i][j] = Math.min(3, Math.max(0.5, this.knowledge.weights[i][j]));
+                    }
+                }
+
+                this.saveKnowledge();
+                this.updateLearningStats();
+            }
+
+            learnFromResult(result) {
+                if (!this.learningMode) return;
+
+                // 根据游戏结果更新历史走法的分数
+                const reward = result === 'white' ? 10 : (result === 'draw' ? 2 : -5);
+                
+                this.moveHistory.forEach((move, index) => {
+                    if (move.player === 'white') {
+                        const pattern = this.moveHistory.slice(0, index).map(m => 
+                            `${m.row},${m.col},${m.player}`
+                        ).join('|');
+                        
+                        if (this.knowledge.patterns[pattern]) {
+                            const m = this.knowledge.patterns[pattern].find(p => 
+                                p.row === move.row && p.col === move.col
+                            );
+                            if (m) {
+                                m.score = (m.score * 0.9) + reward;
+                            }
+                        }
+                    }
+                });
+
+                this.knowledge.experiences.push({
+                    moves: this.moveHistory.length,
+                    result: result,
+                    timestamp: Date.now()
+                });
+
+                // 保留最近1000条经验
+                if (this.knowledge.experiences.length > 1000) {
+                    this.knowledge.experiences = this.knowledge.experiences.slice(-1000);
+                }
+
+                this.saveKnowledge();
+                this.updateLearningStats();
+            }
+
+            checkWin(row, col) {
+                const player = this.board[row][col];
+                const directions = [[0,1], [1,0], [1,1], [1,-1]];
+                
+                return directions.some(([dx, dy]) => {
+                    let count = 1;
+                    
+                    for (let i = 1; i < 5; i++) {
+                        const newRow = row + dx * i;
+                        const newCol = col + dy * i;
+                        if (this.isValid(newRow, newCol) && this.board[newRow][newCol] === player) {
+                            count++;
+                        } else break;
+                    }
+                    
+                    for (let i = 1; i < 5; i++) {
+                        const newRow = row - dx * i;
+                        const newCol = col - dy * i;
+                        if (this.isValid(newRow, newCol) && this.board[newRow][newCol] === player) {
+                            count++;
+                        } else break;
+                    }
+                    
+                    return count >= 5;
+                });
+            }
+
+            isValid(row, col) {
+                return row >= 0 && row < this.size && col >= 0 && col < this.size;
+            }
+
+            isDraw() {
+                return this.board.every(row => row.every(cell => cell !== null));
+            }
+
+            handleGameEnd(winner) {
+                this.gameOver = true;
+                this.stats.totalGames++;
+                
+                let message;
+                if (winner === 'black') {
+                    this.stats.playerWins++;
+                    message = '恭喜你赢了！';
+                } else if (winner === 'white') {
+                    this.stats.aiWins++;
+                    message = 'AI获胜！';
+                } else {
+                    message = '平局！';
+                }
+
+                this.stats.winRate = ((this.stats.aiWins / this.stats.totalGames) * 100).toFixed(1);
+                this.saveStats();
+                
+                if (this.learningMode) {
+                    this.learnFromResult(winner);
+                }
+
+                this.updateStats();
+                
+                setTimeout(() => {
+                    alert(`${message}\n\n点击"新游戏"开始下一局`);
+                }, 100);
+            }
+
+            newGame() {
+                this.gameOver = false;
+                this.currentPlayer = 'black';
+                this.moveHistory = [];
+                this.initializeBoard();
+                this.updateStatus();
+                document.getElementById('lastMove').textContent = '';
+                document.getElementById('thinking').classList.remove('active');
+            }
+
+            toggleLearning() {
+                this.learningMode = !this.learningMode;
+                const btn = document.getElementById('learnBtn');
+                const status = document.getElementById('learnStatus');
+                
+                if (this.learningMode) {
+                    btn.classList.add('active');
+                    btn.textContent = '禁用学习模式';
+                    status.textContent = '已启用';
+                    status.className = 'learning-status status-active';
+                } else {
+                    btn.classList.remove('active');
+                    btn.textContent = '启用学习模式';
+                    status.textContent = '已禁用';
+                    status.className = 'learning-status status-inactive';
+                }
+                this.saveKnowledge();
+            }
+
+            trainAI() {
+                let count = 0;
+                const maxGames = 50;
+                const trainBtn = document.querySelector('.btn-success');
+                const originalText = trainBtn.textContent;
+                trainBtn.textContent = '训练中...';
+                trainBtn.disabled = true;
+
+                const interval = setInterval(() => {
+                    // 快速自对弈训练
+                    this.simulateGame();
+                    count++;
+                    
+                    const progress = Math.floor((count / maxGames) * 100);
+                    document.getElementById('learnProgress').textContent = `${progress}%`;
+                    document.getElementById('progressBar').style.width = `${progress}%`;
+
+                    if (count >= maxGames) {
+                        clearInterval(interval);
+                        trainBtn.textContent = originalText;
+                        trainBtn.disabled = false;
+                        alert(`训练完成！AI已自我对弈${maxGames}局`);
+                        this.newGame();
+                    }
+                }, 100);
+            }
+
+            simulateGame() {
+                // 快速模拟一局游戏用于训练
+                this.board = Array(this.size).fill(null).map(() => Array(this.size).fill(null));
+                this.currentPlayer = 'black';
+                this.moveHistory = [];
+                this.gameOver = false;
+
+                while (!this.gameOver) {
+                    const move = this.findBestMove();
+                    if (!move) break;
+                    
+                    this.board[move.row][move.col] = this.currentPlayer;
+                    this.moveHistory.push({row: move.row, col: move.col, player: this.currentPlayer});
+                    
+                    if (this.checkWin(move.row, move.col)) {
+                        this.learnFromResult(this.currentPlayer);
+                        this.gameOver = true;
+                    } else if (this.isDraw()) {
+                        this.learnFromResult('draw');
+                        this.gameOver = true;
+                    }
+                    
+                    this.currentPlayer = this.currentPlayer === 'black' ? 'white' : 'black';
+                }
+            }
+
+            resetKnowledge() {
+                if (confirm('确定要重置AI的所有学习成果吗？这将清除所有统计数据和学习经验。')) {
+                    this.knowledge = {
+                        patterns: {},
+                        weights: Array(this.size).fill(null).map(() => Array(this.size).fill(1)),
+                        experiences: []
+                    };
+                    this.stats = {
+                        totalGames: 0,
+                        playerWins: 0,
+                        aiWins: 0,
+                        winRate: 0
+                    };
+                    this.saveKnowledge();
+                    this.saveStats();
+                    this.updateStats();
+                    this.updateLearningStats();
+                    alert('AI知识已重置！');
+                    this.newGame();
+                }
+            }
+
+            updateStatus() {
+                const status = document.getElementById('status');
+                if (this.currentPlayer === 'black') {
+                    status.textContent = '黑棋回合 (你的回合)';
+                    status.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                } else {
+                    status.textContent = '白棋回合 (AI思考中)';
+                    status.style.background = 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)';
+                }
+            }
+
+            updateStats() {
+                document.getElementById('totalGames').textContent = this.stats.totalGames;
+                document.getElementById('playerWins').textContent = this.stats.playerWins;
+                document.getElementById('aiWins').textContent = this.stats.aiWins;
+                document.getElementById('winRate').textContent = this.stats.winRate + '%';
+                this.updateLearningStats();
+            }
+
+            updateLearningStats() {
+                const patterns = Object.keys(this.knowledge.patterns).length;
+                document.getElementById('learnedPatterns').textContent = patterns;
+                
+                const exp = this.knowledge.experiences.length;
+                let depth = '初级';
+                if (exp > 100) depth = '中级';
+                if (exp > 500) depth = '高级';
+                if (exp > 1000) depth = '专家';
+                document.getElementById('strategyDepth').textContent = depth;
+            }
+        }
+
+        // 初始化游戏
+        const game = new AdaptiveGomokuAI();
+    </script>
+</body>
+</html>
